@@ -28,10 +28,10 @@ export function Footer() {
               Nepal
               <span aria-hidden="true" className="mx-2">·</span>
               <a
-                href="mailto:humanfromtheearthhere@gmail.com"
+                href="#contact"
                 className="text-slate-600 hover:text-[#D9480F] transition-colors"
               >
-                humanfromtheearthhere@gmail.com
+                Research Desk
               </a>
             </p>
           </div>

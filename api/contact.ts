@@ -15,7 +15,6 @@ interface ContactSubmission {
   subject: string;
   message: string;
   submittedAt: string;
-  recipientEmail: string;
   emailDispatched: boolean;
 }
 
@@ -77,6 +76,10 @@ export async function POST(request: Request): Promise<Response> {
   const token = crypto.randomBytes(3).toString('hex').toUpperCase();
   const referenceId = `NM-${dateStamp}-${token}`;
 
+  const originHeader =
+    request.headers.get('origin') ||
+    (request.headers.get('host') ? `https://${request.headers.get('host')}` : undefined);
+
   const mailPayload = {
     id: referenceId,
     name,
@@ -84,24 +87,32 @@ export async function POST(request: Request): Promise<Response> {
     subject,
     message,
     submittedAt: now.toISOString(),
+    siteOrigin: originHeader,
   };
 
   const mailResult = await dispatchContactEmail(mailPayload);
 
-  if (mailResult.provider !== 'none' && !mailResult.dispatched) {
+  if (
+    (mailResult.provider === 'smtp' || mailResult.provider === 'resend') &&
+    !mailResult.dispatched
+  ) {
     return jsonResponse(
       {
         error:
           mailResult.error ||
-          `Unable to deliver email to ${mailResult.recipientEmail} right now.`,
+          'Unable to deliver your inquiry right now. Please try again shortly.',
       },
       502
     );
   }
 
   const entry: ContactSubmission = {
-    ...mailPayload,
-    recipientEmail: mailResult.recipientEmail,
+    id: mailPayload.id,
+    name: mailPayload.name,
+    email: mailPayload.email,
+    subject: mailPayload.subject,
+    message: mailPayload.message,
+    submittedAt: mailPayload.submittedAt,
     emailDispatched: mailResult.dispatched,
   };
 
@@ -141,11 +152,13 @@ export async function POST(request: Request): Promise<Response> {
       ok: true,
       referenceId: entry.id,
       submittedAt: entry.submittedAt,
-      recipientEmail: mailResult.recipientEmail,
       emailDispatched: mailResult.dispatched,
+      activationRequired: Boolean(mailResult.activationRequired),
       message: mailResult.dispatched
-        ? `Your inquiry has been delivered directly to ${mailResult.recipientEmail}.`
-        : 'Your inquiry has been recorded on the server.',
+        ? 'Your inquiry has been delivered directly to the NepMatics team.'
+        : mailResult.activationRequired
+          ? 'Your inquiry is recorded and a one-time email activation prompt was sent to the team inbox.'
+          : 'Your inquiry has been recorded securely on the server.',
     },
     201
   );

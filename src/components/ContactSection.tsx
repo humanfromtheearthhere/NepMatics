@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { CheckCircle2, AlertCircle, Send, Mail, ExternalLink } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Send } from 'lucide-react';
 
 interface ContactSectionProps {
   presetSubject?: string;
@@ -16,12 +16,9 @@ interface SubmissionReceipt {
   referenceId: string;
   submittedAt: string;
   message: string;
-  recipientEmail: string;
   emailDispatched: boolean;
-  mailtoHref: string;
+  activationRequired: boolean;
 }
-
-const DIRECT_EMAIL = 'humanfromtheearthhere@gmail.com';
 
 const COLLABORATION_PROFILES = [
   {
@@ -39,20 +36,6 @@ const COLLABORATION_PROFILES = [
 ];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-function buildMailtoHref(
-  recipient: string,
-  subject: string,
-  name: string,
-  senderEmail: string,
-  bodyText: string
-): string {
-  const safeRecipient = EMAIL_REGEX.test(recipient) ? recipient : DIRECT_EMAIL;
-  const fullBody = `From: ${name} (${senderEmail})\n\n${bodyText}`;
-  return `mailto:${safeRecipient}?subject=${encodeURIComponent(
-    `[NEPMATICS] ${subject}`
-  )}&body=${encodeURIComponent(fullBody)}`;
-}
 
 export function ContactSection({ presetSubject }: ContactSectionProps) {
   const [name, setName] = useState('');
@@ -127,8 +110,8 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
         ok?: boolean;
         referenceId?: string;
         submittedAt?: string;
-        recipientEmail?: string;
         emailDispatched?: boolean;
+        activationRequired?: boolean;
         message?: string;
         error?: string;
         fieldErrors?: FieldErrors;
@@ -144,22 +127,12 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
         return;
       }
 
-      const recipientEmail = payload.recipientEmail || DIRECT_EMAIL;
-      const mailtoHref = buildMailtoHref(
-        recipientEmail,
-        cleanSubject,
-        cleanName,
-        cleanEmail,
-        cleanMessage
-      );
-
       setReceipt({
         referenceId: payload.referenceId || 'Recorded',
         submittedAt: payload.submittedAt || new Date().toISOString(),
         message: payload.message || 'Your inquiry has been recorded by NepMatics.',
-        recipientEmail,
         emailDispatched: Boolean(payload.emailDispatched),
-        mailtoHref,
+        activationRequired: Boolean(payload.activationRequired),
       });
       setName('');
       setEmail('');
@@ -168,7 +141,7 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
       setFieldErrors({});
     } catch {
       setServerError(
-        `Network error while contacting the NepMatics server. You can email ${DIRECT_EMAIL} directly or try again.`
+        'Network error while contacting the NepMatics server. Please try again shortly.'
       );
     } finally {
       setSubmitting(false);
@@ -205,15 +178,8 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
               ))}
             </div>
 
-            <div className="mt-8 space-y-2 text-xs text-slate-600">
-              <p className="font-mono text-slate-500">Origin: Nepal · Direct Correspondence</p>
-              <a
-                href={`mailto:${DIRECT_EMAIL}`}
-                className="inline-flex items-center gap-2 font-mono text-xs font-medium text-[#D9480F] hover:text-[#B93808] transition-colors"
-              >
-                <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{DIRECT_EMAIL}</span>
-              </a>
+            <div className="mt-8 text-xs text-slate-600">
+              <p className="font-mono text-slate-500">Origin: Nepal</p>
             </div>
           </div>
 
@@ -229,13 +195,13 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
                     <div>
                       <h3 className="font-display text-xl font-semibold text-slate-950">
                         {receipt.emailDispatched
-                          ? 'Inquiry Sent Directly'
-                          : 'Inquiry Recorded'}
+                          ? 'Inquiry Sent'
+                          : receipt.activationRequired
+                            ? 'Inquiry Recorded — Activation Sent'
+                            : 'Inquiry Recorded'}
                       </h3>
                       <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                        {receipt.emailDispatched
-                          ? `Your message has been delivered directly to ${receipt.recipientEmail}.`
-                          : `Your inquiry was saved on the NepMatics server. Automatic mail transport is not yet configured in server environment variables, so you can also send directly to ${receipt.recipientEmail} below.`}
+                        {receipt.message}
                       </p>
                     </div>
                   </div>
@@ -251,26 +217,19 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
                     </div>
                     <div>
                       <p className="font-mono text-[11px] uppercase tracking-wider text-slate-500">
-                        Destination Email
+                        Status
                       </p>
-                      <p className="mt-1 font-mono text-xs text-slate-700 break-all">
-                        {receipt.recipientEmail}
+                      <p className="mt-1 font-mono text-xs font-medium text-slate-700">
+                        {receipt.emailDispatched
+                          ? 'Delivered'
+                          : receipt.activationRequired
+                            ? 'Pending First-Time Verification'
+                            : 'Logged'}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    {!receipt.emailDispatched && (
-                      <a
-                        href={receipt.mailtoHref}
-                        className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-[#D9480F] px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#EA580C] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D9480F]"
-                      >
-                        <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>Open Email to {receipt.recipientEmail}</span>
-                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                      </a>
-                    )}
-
                     <button
                       type="button"
                       onClick={() => setReceipt(null)}
@@ -287,14 +246,7 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
                       Collaboration &amp; Research Inquiry
                     </h3>
                     <p className="mt-1 text-xs text-slate-600">
-                      Inquiries are routed to{' '}
-                      <a
-                        href={`mailto:${DIRECT_EMAIL}`}
-                        className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 hover:text-[#D9480F]"
-                      >
-                        {DIRECT_EMAIL}
-                      </a>
-                      .
+                      Share your research interest, engineering background, or collaboration proposal below.
                     </p>
                   </div>
 
@@ -444,10 +396,7 @@ export function ContactSection({ presetSubject }: ContactSectionProps) {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-                    <span className="font-mono text-[11px] text-slate-500">
-                      Recipient: {DIRECT_EMAIL}
-                    </span>
+                  <div className="flex items-center justify-end pt-2">
                     <button
                       type="submit"
                       disabled={submitting}

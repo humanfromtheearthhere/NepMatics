@@ -22,7 +22,6 @@ interface ContactSubmission {
   subject: string;
   message: string;
   submittedAt: string;
-  recipientEmail: string;
   emailDispatched: boolean;
 }
 
@@ -143,6 +142,13 @@ async function createApp() {
     const token = crypto.randomBytes(3).toString('hex').toUpperCase();
     const referenceId = `NM-${dateStamp}-${token}`;
 
+    const originHeader =
+      typeof req.headers.origin === 'string'
+        ? req.headers.origin
+        : typeof req.headers.host === 'string'
+          ? `${req.protocol || 'https'}://${req.headers.host}`
+          : undefined;
+
     const mailPayload = {
       id: referenceId,
       name,
@@ -150,22 +156,30 @@ async function createApp() {
       subject,
       message,
       submittedAt: now.toISOString(),
+      siteOrigin: originHeader,
     };
 
     const mailResult = await dispatchContactEmail(mailPayload);
 
-    if (mailResult.provider !== 'none' && !mailResult.dispatched) {
+    if (
+      (mailResult.provider === 'smtp' || mailResult.provider === 'resend') &&
+      !mailResult.dispatched
+    ) {
       res.status(502).json({
         error:
           mailResult.error ||
-          `Unable to deliver email to ${mailResult.recipientEmail} right now.`,
+          'Unable to deliver your inquiry right now. Please try again shortly.',
       });
       return;
     }
 
     const entry: ContactSubmission = {
-      ...mailPayload,
-      recipientEmail: mailResult.recipientEmail,
+      id: mailPayload.id,
+      name: mailPayload.name,
+      email: mailPayload.email,
+      subject: mailPayload.subject,
+      message: mailPayload.message,
+      submittedAt: mailPayload.submittedAt,
       emailDispatched: mailResult.dispatched,
     };
 
@@ -175,11 +189,13 @@ async function createApp() {
         ok: true,
         referenceId: entry.id,
         submittedAt: entry.submittedAt,
-        recipientEmail: mailResult.recipientEmail,
         emailDispatched: mailResult.dispatched,
+        activationRequired: Boolean(mailResult.activationRequired),
         message: mailResult.dispatched
-          ? `Your inquiry has been delivered directly to ${mailResult.recipientEmail}.`
-          : 'Your inquiry has been recorded on the server.',
+          ? 'Your inquiry has been delivered directly to the NepMatics team.'
+          : mailResult.activationRequired
+            ? 'Your inquiry is recorded and a one-time email activation prompt was sent to the team inbox.'
+            : 'Your inquiry has been recorded securely on the server.',
       });
     } catch {
       if (mailResult.dispatched) {
@@ -187,9 +203,9 @@ async function createApp() {
           ok: true,
           referenceId: entry.id,
           submittedAt: entry.submittedAt,
-          recipientEmail: mailResult.recipientEmail,
           emailDispatched: true,
-          message: `Your inquiry has been delivered directly to ${mailResult.recipientEmail}.`,
+          activationRequired: false,
+          message: 'Your inquiry has been delivered directly to the NepMatics team.',
         });
         return;
       }
