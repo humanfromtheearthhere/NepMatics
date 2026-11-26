@@ -21,10 +21,10 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   loadingVideoUrl: DEFAULT_LOADING_VIDEO_URL,
   loadingDurationMs: 1600,
   approachVideos: {
-    '01': null,
-    '02': null,
-    '03': null,
-    '04': null,
+    '01': '/assets/approach/discover.mp4',
+    '02': '/assets/approach/research.mp4',
+    '03': '/assets/approach/experiment.mp4',
+    '04': '/assets/approach/engineer.mp4',
   },
 };
 
@@ -90,10 +90,22 @@ export function normalizeSiteConfig(input: unknown): SiteConfig {
     loadingVideoUrl,
     loadingDurationMs,
     approachVideos: {
-      '01': sanitizeMediaUrl(rawApproach['01']),
-      '02': sanitizeMediaUrl(rawApproach['02']),
-      '03': sanitizeMediaUrl(rawApproach['03']),
-      '04': sanitizeMediaUrl(rawApproach['04']),
+      '01':
+        '01' in rawApproach
+          ? sanitizeMediaUrl(rawApproach['01'])
+          : DEFAULT_SITE_CONFIG.approachVideos['01'],
+      '02':
+        '02' in rawApproach
+          ? sanitizeMediaUrl(rawApproach['02'])
+          : DEFAULT_SITE_CONFIG.approachVideos['02'],
+      '03':
+        '03' in rawApproach
+          ? sanitizeMediaUrl(rawApproach['03'])
+          : DEFAULT_SITE_CONFIG.approachVideos['03'],
+      '04':
+        '04' in rawApproach
+          ? sanitizeMediaUrl(rawApproach['04'])
+          : DEFAULT_SITE_CONFIG.approachVideos['04'],
     },
   };
 }

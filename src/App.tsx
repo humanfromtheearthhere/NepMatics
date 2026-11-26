@@ -86,7 +86,7 @@ export default function App() {
                 onSelectCollaborationTopic={(subject) => setPresetSubject(subject)}
               />
               <FeaturedResearchSection />
-              <ApproachSection onOpenAdmin={openAdmin} />
+              <ApproachSection />
               <PublicationsSection
                 onSelectCollaborationTopic={(subject) => setPresetSubject(subject)}
               />

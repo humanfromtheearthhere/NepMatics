@@ -447,13 +447,13 @@ export function TempAdminPortal({ onClose }: TempAdminPortalProps) {
                       )}
                     </div>
 
-                    <div className="mt-4 flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div className="mt-4 flex aspect-square max-h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white p-3">
                       {videoUrl ? (
                         isImageAssetUrl(videoUrl) ? (
                           <img
                             src={videoUrl}
                             alt={`${stage.title} illustration`}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-contain mix-blend-multiply"
                           />
                         ) : (
                           <video
@@ -463,7 +463,7 @@ export function TempAdminPortal({ onClose }: TempAdminPortalProps) {
                             loop
                             muted
                             playsInline
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-contain mix-blend-multiply"
                           />
                         )
                       ) : (
