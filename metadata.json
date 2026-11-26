@@ -1,0 +1,6 @@
+{
+  "name": "NEPMATICS",
+  "description": "Independent Nepal-based advanced technology research and development initiative. Engineering What Comes Next.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

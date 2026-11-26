@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: #ffffff;
+    color: #0f172a;
+    scroll-behavior: smooth;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+.scientific-grid {
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  html.nepmatics-custom-cursor,
+  html.nepmatics-custom-cursor * {
+    cursor: none !important;
+  }
+}
+
+@keyframes nepmatics-ripple-outer {
+  0% {
+    transform: translate(-50%, -50%) scale(0.32);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.18);
+    opacity: 0;
+  }
+}
+
+@keyframes nepmatics-ripple-inner {
+  0% {
+    transform: translate(-50%, -50%) scale(0.25);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.88);
+    opacity: 0;
+  }
+}
+
+.nepmatics-click-ripple-outer {
+  animation: nepmatics-ripple-outer 340ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.nepmatics-click-ripple-inner {
+  animation: nepmatics-ripple-inner 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
