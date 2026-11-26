@@ -28,11 +28,13 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   },
 };
 
-const SAFE_DATA_IMAGE_PREFIXES = [
+const SAFE_DATA_MEDIA_PREFIXES = [
   'data:image/png;base64,',
   'data:image/jpeg;base64,',
   'data:image/webp;base64,',
   'data:image/gif;base64,',
+  'data:video/mp4;base64,',
+  'data:video/webm;base64,',
 ];
 
 export function sanitizeMediaUrl(value: unknown): string | null {
@@ -46,7 +48,7 @@ export function sanitizeMediaUrl(value: unknown): string | null {
     return trimmed;
   }
 
-  for (const prefix of SAFE_DATA_IMAGE_PREFIXES) {
+  for (const prefix of SAFE_DATA_MEDIA_PREFIXES) {
     if (trimmed.startsWith(prefix)) {
       return trimmed;
     }

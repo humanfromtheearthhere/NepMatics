@@ -157,18 +157,23 @@ export function SiteConfigProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Fallback for small images if running on static host without upload filesystem
-    if (file.type.startsWith('image/') && file.type !== 'image/svg+xml' && file.size <= 1_500_000) {
+    // Fallback for small images or short videos if running on static/serverless host without persistent /api/upload
+    const supportsInlineFallback =
+      (file.type.startsWith('image/') && file.type !== 'image/svg+xml') ||
+      file.type === 'video/mp4' ||
+      file.type === 'video/webm';
+
+    if (supportsInlineFallback && file.size <= 1_200_000) {
       return await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           if (typeof reader.result === 'string') {
             resolve(reader.result);
           } else {
-            reject(new Error('Could not read image file.'));
+            reject(new Error('Could not read uploaded file.'));
           }
         };
-        reader.onerror = () => reject(new Error('Could not read image file.'));
+        reader.onerror = () => reject(new Error('Could not read uploaded file.'));
         reader.readAsDataURL(file);
       });
     }
