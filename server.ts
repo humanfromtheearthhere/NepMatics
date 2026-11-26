@@ -169,6 +169,7 @@ async function createApp() {
   });
 
   if (!IS_PROD) {
+    app.use(express.static(path.resolve(process.cwd(), 'public')));
     const { createServer } = await import('vite');
     const vite = await createServer({
       server: { middlewareMode: true },
