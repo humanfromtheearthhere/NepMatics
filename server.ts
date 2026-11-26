@@ -9,6 +9,12 @@ import {
   sanitizeMultiline,
   sanitizeSingleLine,
 } from './lib/mailer.ts';
+import {
+  DEFAULT_SITE_CONFIG,
+  normalizeSiteConfig,
+  sanitizeSvgContent,
+  type SiteConfig,
+} from './lib/siteConfig.ts';
 
 dotenv.config();
 
@@ -37,9 +43,47 @@ interface PublicationEntry {
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const INQUIRIES_FILE = path.resolve(DATA_DIR, 'inquiries.json');
+const SITE_CONFIG_FILE = path.resolve(DATA_DIR, 'site-config.json');
+const UPLOADS_DIR = path.resolve(DATA_DIR, 'uploads');
 
-if (!INQUIRIES_FILE.startsWith(DATA_DIR + path.sep)) {
-  throw new Error('Invalid inquiries storage path configuration.');
+if (
+  !INQUIRIES_FILE.startsWith(DATA_DIR + path.sep) ||
+  !SITE_CONFIG_FILE.startsWith(DATA_DIR + path.sep) ||
+  !UPLOADS_DIR.startsWith(DATA_DIR + path.sep)
+) {
+  throw new Error('Invalid server storage path configuration.');
+}
+
+const ALLOWED_MEDIA_MIME: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/svg+xml': '.svg',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/quicktime': '.mov',
+};
+
+const SAFE_MEDIA_FILENAME = /^[a-f0-9-]{8,64}\.(png|jpg|webp|gif|svg|mp4|webm|mov)$/;
+
+async function readSiteConfig(): Promise<SiteConfig> {
+  try {
+    const raw = await fs.readFile(SITE_CONFIG_FILE, 'utf-8');
+    const parsed: unknown = JSON.parse(raw);
+    return normalizeSiteConfig(parsed);
+  } catch (err) {
+    const nodeErr = err as NodeJS.ErrnoException;
+    if (nodeErr.code !== 'ENOENT') {
+      console.warn('[config] Failed to read site-config.json');
+    }
+    return DEFAULT_SITE_CONFIG;
+  }
+}
+
+async function writeSiteConfig(config: SiteConfig): Promise<void> {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(SITE_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 
 const rateLimitMap = new Map<string, number[]>();
@@ -83,7 +127,7 @@ async function persistInquiry(entry: ContactSubmission): Promise<void> {
 async function createApp() {
   const app = express();
   app.set('trust proxy', 1);
-  app.use(express.json({ limit: '32kb' }));
+  app.use(express.json({ limit: '256kb' }));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ ok: true, service: 'nepmatics-web' });
@@ -92,6 +136,99 @@ async function createApp() {
   app.get('/api/publications', (_req: Request, res: Response) => {
     const publications: PublicationEntry[] = [];
     res.json({ publications });
+  });
+
+  app.get('/api/site-config', async (_req: Request, res: Response) => {
+    const config = await readSiteConfig();
+    res.json({ ok: true, config });
+  });
+
+  app.put('/api/site-config', async (req: Request, res: Response) => {
+    if (!req.body || typeof req.body !== 'object') {
+      res.status(400).json({ error: 'Invalid site configuration payload.' });
+      return;
+    }
+    const normalized = normalizeSiteConfig(req.body);
+    try {
+      await writeSiteConfig(normalized);
+      res.json({ ok: true, config: normalized });
+    } catch {
+      res.status(500).json({ error: 'Unable to save site configuration.' });
+    }
+  });
+
+  app.post(
+    '/api/upload',
+    express.raw({ type: Object.keys(ALLOWED_MEDIA_MIME), limit: '25mb' }),
+    async (req: Request, res: Response) => {
+      const contentTypeHeader = (req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+      const ext = ALLOWED_MEDIA_MIME[contentTypeHeader];
+      if (!ext) {
+        res.status(400).json({
+          error: 'Unsupported file type. Upload PNG, JPG, WEBP, GIF, SVG, MP4, WEBM, or MOV.',
+        });
+        return;
+      }
+
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        res.status(400).json({ error: 'Uploaded file is empty.' });
+        return;
+      }
+
+      const filename = `${crypto.randomUUID()}${ext}`;
+      const targetPath = path.resolve(UPLOADS_DIR, filename);
+      if (!targetPath.startsWith(UPLOADS_DIR + path.sep)) {
+        res.status(400).json({ error: 'Invalid upload path.' });
+        return;
+      }
+
+      try {
+        await fs.mkdir(UPLOADS_DIR, { recursive: true });
+        if (ext === '.svg') {
+          const cleanSvg = sanitizeSvgContent(req.body.toString('utf-8'));
+          await fs.writeFile(targetPath, cleanSvg, 'utf-8');
+        } else {
+          await fs.writeFile(targetPath, req.body);
+        }
+        res.status(201).json({
+          ok: true,
+          url: `/api/media/${filename}`,
+          filename,
+          mimeType: contentTypeHeader,
+        });
+      } catch {
+        res.status(500).json({ error: 'Failed to store uploaded file.' });
+      }
+    }
+  );
+
+  app.get('/api/media/:filename', async (req: Request, res: Response) => {
+    const rawParam = req.params.filename;
+    const filename = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+    if (!filename || !SAFE_MEDIA_FILENAME.test(filename)) {
+      res.status(404).json({ error: 'Media asset not found.' });
+      return;
+    }
+
+    const filePath = path.resolve(UPLOADS_DIR, filename);
+    if (!filePath.startsWith(UPLOADS_DIR + path.sep)) {
+      res.status(404).json({ error: 'Media asset not found.' });
+      return;
+    }
+
+    try {
+      await fs.access(filePath);
+    } catch {
+      res.status(404).json({ error: 'Media asset not found.' });
+      return;
+    }
+
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    if (filename.endsWith('.svg')) {
+      res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+    }
+    res.sendFile(filePath);
   });
 
   app.post('/api/contact', async (req: Request, res: Response) => {

@@ -1,26 +1,19 @@
 import { useState } from 'react';
-import { Compass, FlaskConical, Cpu, Microscope } from 'lucide-react';
 import { APPROACH_STAGES } from '../data/researchData';
+import type { ApproachVideoMap } from '../../lib/siteConfig';
+import { isImageAssetUrl, useSiteConfig } from '../context/SiteConfigContext';
 
-function StageRingIcon({ step, active }: { step: string; active: boolean }) {
-  const colorClass = active ? 'text-[#D9480F]' : 'text-slate-700';
-  switch (step) {
-    case '01':
-      return <Compass className={`h-8 w-8 ${colorClass}`} strokeWidth={1.5} aria-hidden="true" />;
-    case '02':
-      return <Microscope className={`h-8 w-8 ${colorClass}`} strokeWidth={1.5} aria-hidden="true" />;
-    case '03':
-      return <FlaskConical className={`h-8 w-8 ${colorClass}`} strokeWidth={1.5} aria-hidden="true" />;
-    default:
-      return <Cpu className={`h-8 w-8 ${colorClass}`} strokeWidth={1.5} aria-hidden="true" />;
-  }
+interface ApproachSectionProps {
+  onOpenAdmin?: () => void;
 }
 
-export function ApproachSection() {
+export function ApproachSection({ onOpenAdmin }: ApproachSectionProps) {
   const [activeStep, setActiveStep] = useState<string>(APPROACH_STAGES[0].step);
+  const { config } = useSiteConfig();
 
   const selectedStage =
     APPROACH_STAGES.find((stage) => stage.step === activeStep) ?? APPROACH_STAGES[0];
+  const selectedVideoUrl = config.approachVideos[selectedStage.step as keyof ApproachVideoMap];
 
   return (
     <section id="approach" className="border-b border-slate-200 bg-white">
@@ -38,15 +31,12 @@ export function ApproachSection() {
           </p>
         </div>
 
-        {/* 4 Clean White Circular Icon Rings */}
-        <div className="relative mt-16 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-[12%] right-[12%] top-12 hidden h-px bg-slate-200 lg:block"
-          />
-
+        {/* 4 Stage Cards — Symbols removed; dedicated video illustration slots */}
+        <div className="relative mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {APPROACH_STAGES.map((stage) => {
             const isSelected = stage.step === activeStep;
+            const stageVideoUrl = config.approachVideos[stage.step as keyof ApproachVideoMap];
+
             return (
               <button
                 key={stage.step}
@@ -56,28 +46,54 @@ export function ApproachSection() {
                 className="group relative z-10 flex flex-col items-center text-center focus-visible:outline-none"
               >
                 <div
-                  className={`flex h-24 w-24 items-center justify-center rounded-full border bg-white transition-all duration-200 ${
+                  className={`relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-2xl border bg-slate-50 transition-all duration-200 ${
                     isSelected
-                      ? 'border-[#D9480F] shadow-[0_14px_34px_rgba(217,72,15,0.16)]'
-                      : 'border-slate-200 shadow-[0_10px_28px_rgba(15,23,42,0.06)] group-hover:border-slate-300'
+                      ? 'border-[#D9480F] shadow-[0_14px_34px_rgba(217,72,15,0.14)]'
+                      : 'border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.05)] group-hover:border-slate-300'
                   }`}
                 >
-                  <StageRingIcon step={stage.step} active={isSelected} />
+                  {stageVideoUrl ? (
+                    isImageAssetUrl(stageVideoUrl) ? (
+                      <img
+                        src={stageVideoUrl}
+                        alt={`${stage.title} illustration`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <video
+                        key={stageVideoUrl}
+                        src={stageVideoUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover"
+                      />
+                    )
+                  ) : (
+                    <span
+                      className={`font-mono text-2xl font-semibold tracking-widest tabular-nums transition-colors ${
+                        isSelected ? 'text-[#D9480F]' : 'text-slate-300 group-hover:text-slate-400'
+                      }`}
+                    >
+                      {stage.step}
+                    </span>
+                  )}
                 </div>
 
                 <span
-                  className={`mt-5 font-mono text-xs font-medium tabular-nums ${
+                  className={`mt-4 font-mono text-xs font-medium tabular-nums ${
                     isSelected ? 'text-[#D9480F]' : 'text-slate-400'
                   }`}
                 >
                   {stage.step}
                 </span>
 
-                <h3 className="mt-1.5 font-display text-lg font-semibold text-slate-950">
+                <h3 className="mt-1 font-display text-lg font-semibold text-slate-950">
                   {stage.title}
                 </h3>
 
-                <p className="mt-2 max-w-[24ch] text-xs leading-relaxed text-slate-600">
+                <p className="mt-2 max-w-[26ch] text-xs leading-relaxed text-slate-600">
                   {stage.summary}
                 </p>
               </button>
@@ -85,7 +101,7 @@ export function ApproachSection() {
           })}
         </div>
 
-        <div className="mx-auto mt-12 max-w-3xl rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-7">
+        <div className="mx-auto mt-12 max-w-4xl rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-7">
           <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
             <div>
               <span className="font-mono text-xs font-medium text-[#D9480F]">
@@ -95,8 +111,41 @@ export function ApproachSection() {
                 {selectedStage.title}
               </h3>
             </div>
-            <span className="font-mono text-xs text-slate-500">Core Stage Outputs</span>
+            <div className="flex items-center gap-4">
+              <span className="font-mono text-xs text-slate-500">Core Stage Outputs</span>
+              {onOpenAdmin && (
+                <button
+                  type="button"
+                  onClick={onOpenAdmin}
+                  className="rounded-md border border-slate-300 bg-white px-2.5 py-1 font-mono text-[11px] font-medium text-slate-700 hover:border-[#D9480F] hover:text-[#D9480F] transition-colors"
+                >
+                  Manage Stage Videos
+                </button>
+              )}
+            </div>
           </div>
+
+          {selectedVideoUrl && (
+            <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
+              {isImageAssetUrl(selectedVideoUrl) ? (
+                <img
+                  src={selectedVideoUrl}
+                  alt={`${selectedStage.title} illustration`}
+                  className="max-h-72 w-full object-cover"
+                />
+              ) : (
+                <video
+                  key={selectedVideoUrl}
+                  src={selectedVideoUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="max-h-72 w-full object-cover"
+                />
+              )}
+            </div>
+          )}
 
           <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {selectedStage.deliverables.map((item) => (

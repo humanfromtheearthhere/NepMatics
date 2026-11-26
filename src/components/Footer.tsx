@@ -8,7 +8,11 @@ const FOOTER_LINKS = [
   { label: 'Contact', href: '#contact' },
 ];
 
-export function Footer() {
+interface FooterProps {
+  onOpenAdmin?: () => void;
+}
+
+export function Footer({ onOpenAdmin }: FooterProps) {
   return (
     <footer className="bg-slate-50">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
@@ -36,7 +40,7 @@ export function Footer() {
             </p>
           </div>
 
-          <nav aria-label="Footer Navigation" className="flex flex-wrap gap-x-8 gap-y-3">
+          <nav aria-label="Footer Navigation" className="flex flex-wrap items-center gap-x-8 gap-y-3">
             {FOOTER_LINKS.map((link) => (
               <a
                 key={link.href}
@@ -46,6 +50,15 @@ export function Footer() {
                 {link.label}
               </a>
             ))}
+            {onOpenAdmin && (
+              <button
+                type="button"
+                onClick={onOpenAdmin}
+                className="text-xs font-medium uppercase tracking-wider text-[#D9480F] hover:text-[#B93808] transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D9480F] rounded-sm"
+              >
+                Temp Admin
+              </button>
+            )}
           </nav>
         </div>
 

@@ -80,3 +80,16 @@
 .nepmatics-click-ripple-inner {
   animation: nepmatics-ripple-inner 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes nepmatics-loader-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.nepmatics-loader-ring {
+  animation: nepmatics-loader-orbit 1.4s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
