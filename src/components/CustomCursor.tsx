@@ -92,7 +92,7 @@ export function CustomCursor() {
 
       window.setTimeout(() => {
         setRipples((prev) => prev.filter((item) => item.id !== id));
-      }, 380);
+      }, 360);
     };
 
     const handlePointerDown = (e: PointerEvent) => {
@@ -133,7 +133,7 @@ export function CustomCursor() {
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden"
     >
-      {/* Tactile Press Ripple Rings */}
+      {/* Crisp Concentric Press Ripple Rings */}
       {ripples.map((ripple) => (
         <div
           key={ripple.id}
@@ -141,15 +141,15 @@ export function CustomCursor() {
           className="fixed h-0 w-0"
         >
           <span
-            className={`nepmatics-click-ripple-outer block h-10 w-10 rounded-full border-[1.75px] ${
-              ripple.isRight ? 'border-[#D9480F]' : 'border-slate-900/80'
+            className={`nepmatics-click-ripple-outer block h-8 w-8 rounded-full border-[1.25px] ${
+              ripple.isRight ? 'border-[#D9480F]' : 'border-slate-900/75'
             }`}
           />
-          <span className="nepmatics-click-ripple-inner block h-5 w-5 rounded-full border border-[#D9480F]/85" />
+          <span className="nepmatics-click-ripple-inner block h-4 w-4 rounded-full border border-[#D9480F]/80" />
         </div>
       ))}
 
-      {/* Custom Multi-State Pointer */}
+      {/* Slim, Precision Multi-State Pointer */}
       <div
         ref={cursorRef}
         style={{ left: 0, top: 0 }}
@@ -159,74 +159,71 @@ export function CustomCursor() {
       >
         {variant === 'text' && !rightHandActive ? (
           <svg
-            width="20"
-            height="24"
-            viewBox="0 0 20 24"
+            width="16"
+            height="20"
+            viewBox="0 0 16 20"
             fill="none"
-            className="-translate-x-1/2 -translate-y-1/2 drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
+            className="-translate-x-1/2 -translate-y-1/2 drop-shadow-[0_1px_1px_rgba(255,255,255,0.95)]"
           >
             <path
-              d="M6 3H14M10 3V21M7 12H13M6 21H14"
+              d="M5 2.5H11M8 2.5V17.5M5.5 10H10.5M5 17.5H11"
               stroke="#0F172A"
-              strokeWidth="2"
+              strokeWidth="1.4"
               strokeLinecap="round"
             />
           </svg>
         ) : showHand ? (
-          /* Crisp Professional Hand Pointer with Press Compression Animation */
+          /* Slender Professional Hand Pointer with Press Compression */
           <div
-            className={`relative -translate-x-[7px] -translate-y-[2px] origin-[7px_2px] transition-transform duration-100 ease-out ${
+            className={`relative -translate-x-[5px] -translate-y-[1px] origin-[5px_1px] transition-transform duration-100 ease-out ${
               isPressed ? 'scale-[0.84] translate-y-[1px]' : 'scale-100'
             }`}
           >
-            {isPressed && (
-              <span className="absolute left-[4px] top-[-1px] h-2.5 w-2.5 rounded-full bg-[#D9480F]/75" />
-            )}
             <svg
-              width="26"
-              height="28"
-              viewBox="0 0 26 28"
+              width="20"
+              height="22"
+              viewBox="0 0 24 26"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="drop-shadow-[0_4px_10px_rgba(15,23,42,0.24)]"
+              className="drop-shadow-[0_2px_6px_rgba(15,23,42,0.2)]"
             >
               <path
-                d="M9 12V4.2C9 2.98 9.98 2 11.2 2C12.42 2 13.4 2.98 13.4 4.2V10.6C13.85 10.22 14.42 10 15.05 10C16.24 10 17.22 10.85 17.42 11.98C17.85 11.68 18.38 11.5 18.95 11.5C20.2 11.5 21.2 12.48 21.25 13.72C21.65 13.52 22.1 13.4 22.58 13.4C23.92 13.4 25 14.48 25 15.82V19.4C25 23.27 21.87 26.4 18 26.4H13.4C10.95 26.4 8.74 25.15 7.47 23.06L3.68 16.84C3.04 15.79 3.4 14.42 4.46 13.81C5.45 13.24 6.72 13.53 7.36 14.48L9 16.9V12Z"
+                d="M8.5 11.2V3.8C8.5 2.81 9.31 2 10.3 2C11.29 2 12.1 2.81 12.1 3.8V10.1C12.48 9.78 12.96 9.6 13.5 9.6C14.5 9.6 15.32 10.32 15.5 11.28C15.86 11.02 16.32 10.86 16.82 10.86C17.88 10.86 18.74 11.7 18.78 12.76C19.12 12.58 19.52 12.48 19.95 12.48C21.08 12.48 22 13.4 22 14.53V18.2C22 21.62 19.22 24.4 15.8 24.4H12.2C10.12 24.4 8.24 23.32 7.18 21.52L3.86 15.92C3.32 15.01 3.63 13.84 4.54 13.32C5.38 12.84 6.45 13.09 6.99 13.9L8.5 16.18V11.2Z"
                 fill="#FFFFFF"
                 stroke="#0F172A"
-                strokeWidth="1.8"
+                strokeWidth="1.35"
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
               <path
-                d="M13.4 10.6V13.8M17.45 11.98V14.4M21.25 13.72V15.4"
+                d="M12.1 10.1V13M15.52 11.28V13.5M18.78 12.76V14.2"
                 stroke="#0F172A"
-                strokeWidth="1.4"
+                strokeWidth="1.15"
                 strokeLinecap="round"
               />
-              {isPressed && <circle cx="11.2" cy="4.2" r="1.4" fill="#D9480F" />}
+              {isPressed && <circle cx="10.3" cy="3.8" r="1.25" fill="#D9480F" />}
             </svg>
           </div>
         ) : (
-          /* Sharp Minimalist Arrow Pointer */
+          /* Slim, Razor-Sharp Arrow Pointer */
           <div
             className={`relative origin-top-left transition-transform duration-100 ease-out ${
               isPressed ? 'scale-[0.86] translate-y-[1px]' : 'scale-100'
             }`}
           >
             <svg
-              width="24"
-              height="26"
-              viewBox="0 0 24 26"
+              width="18"
+              height="20"
+              viewBox="0 0 22 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="drop-shadow-[0_3px_8px_rgba(15,23,42,0.22)]"
+              className="drop-shadow-[0_2px_5px_rgba(15,23,42,0.2)]"
             >
               <path
-                d="M2.5 2L19.5 13.8L11.4 15.1L7.3 22.8L2.5 2Z"
+                d="M2.2 1.8L17.4 12.4L10.1 13.6L6.4 20.4L2.2 1.8Z"
                 fill="#1E293B"
                 stroke="#FFFFFF"
-                strokeWidth="1.8"
+                strokeWidth="1.35"
                 strokeLinejoin="round"
               />
             </svg>
