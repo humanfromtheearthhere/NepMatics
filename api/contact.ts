@@ -2,6 +2,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {
+  dispatchContactEmail,
+  sanitizeMultiline,
+  sanitizeSingleLine,
+} from '../lib/mailer.ts';
 
 interface ContactSubmission {
   id: string;
@@ -10,14 +15,11 @@ interface ContactSubmission {
   subject: string;
   message: string;
   submittedAt: string;
+  recipientEmail: string;
+  emailDispatched: boolean;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-function sanitizeText(value: unknown): string {
-  if (typeof value !== 'string') return '';
-  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim();
-}
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -41,10 +43,10 @@ export async function POST(request: Request): Promise<Response> {
     return jsonResponse({ error: 'Invalid request payload.' }, 400);
   }
 
-  const name = sanitizeText(body.name);
-  const email = sanitizeText(body.email);
-  const subject = sanitizeText(body.subject);
-  const message = sanitizeText(body.message);
+  const name = sanitizeSingleLine(body.name);
+  const email = sanitizeSingleLine(body.email);
+  const subject = sanitizeSingleLine(body.subject);
+  const message = sanitizeMultiline(body.message);
 
   const fieldErrors: Record<string, string> = {};
   if (name.length < 2 || name.length > 100) {
@@ -75,13 +77,32 @@ export async function POST(request: Request): Promise<Response> {
   const token = crypto.randomBytes(3).toString('hex').toUpperCase();
   const referenceId = `NM-${dateStamp}-${token}`;
 
-  const entry: ContactSubmission = {
+  const mailPayload = {
     id: referenceId,
     name,
     email,
     subject,
     message,
     submittedAt: now.toISOString(),
+  };
+
+  const mailResult = await dispatchContactEmail(mailPayload);
+
+  if (mailResult.provider !== 'none' && !mailResult.dispatched) {
+    return jsonResponse(
+      {
+        error:
+          mailResult.error ||
+          `Unable to deliver email to ${mailResult.recipientEmail} right now.`,
+      },
+      502
+    );
+  }
+
+  const entry: ContactSubmission = {
+    ...mailPayload,
+    recipientEmail: mailResult.recipientEmail,
+    emailDispatched: mailResult.dispatched,
   };
 
   try {
@@ -107,10 +128,12 @@ export async function POST(request: Request): Promise<Response> {
     existing.push(entry);
     await fs.writeFile(storePath, JSON.stringify(existing, null, 2), 'utf-8');
   } catch {
-    return jsonResponse(
-      { error: 'Unable to record your inquiry right now. Please try again shortly.' },
-      500
-    );
+    if (!mailResult.dispatched) {
+      return jsonResponse(
+        { error: 'Unable to record your inquiry right now. Please try again shortly.' },
+        500
+      );
+    }
   }
 
   return jsonResponse(
@@ -118,7 +141,11 @@ export async function POST(request: Request): Promise<Response> {
       ok: true,
       referenceId: entry.id,
       submittedAt: entry.submittedAt,
-      message: 'Your inquiry has been recorded by NepMatics.',
+      recipientEmail: mailResult.recipientEmail,
+      emailDispatched: mailResult.dispatched,
+      message: mailResult.dispatched
+        ? `Your inquiry has been delivered directly to ${mailResult.recipientEmail}.`
+        : 'Your inquiry has been recorded on the server.',
     },
     201
   );

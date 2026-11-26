@@ -26,6 +26,13 @@ export function Footer() {
             </p>
             <p className="mt-1.5 font-mono text-xs text-slate-500">
               Nepal
+              <span aria-hidden="true" className="mx-2">·</span>
+              <a
+                href="mailto:humanfromtheearthhere@gmail.com"
+                className="text-slate-600 hover:text-[#D9480F] transition-colors"
+              >
+                humanfromtheearthhere@gmail.com
+              </a>
             </p>
           </div>
 

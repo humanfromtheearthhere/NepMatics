@@ -4,6 +4,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import dotenv from 'dotenv';
+import {
+  dispatchContactEmail,
+  sanitizeMultiline,
+  sanitizeSingleLine,
+} from './lib/mailer.ts';
 
 dotenv.config();
 
@@ -17,6 +22,8 @@ interface ContactSubmission {
   subject: string;
   message: string;
   submittedAt: string;
+  recipientEmail: string;
+  emailDispatched: boolean;
 }
 
 interface PublicationEntry {
@@ -32,14 +39,12 @@ interface PublicationEntry {
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const INQUIRIES_FILE = path.resolve(DATA_DIR, 'inquiries.json');
 
-// Confine persistence path inside DATA_DIR
 if (!INQUIRIES_FILE.startsWith(DATA_DIR + path.sep)) {
   throw new Error('Invalid inquiries storage path configuration.');
 }
 
-// Simple per-IP sliding window rate limiter for contact submissions
 const rateLimitMap = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const MAX_SUBMISSIONS_PER_WINDOW = 5;
 
 function isRateLimited(ip: string): boolean {
@@ -53,11 +58,6 @@ function isRateLimited(ip: string): boolean {
   recent.push(now);
   rateLimitMap.set(ip, recent);
   return false;
-}
-
-function sanitizeText(value: unknown): string {
-  if (typeof value !== 'string') return '';
-  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim();
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -90,7 +90,6 @@ async function createApp() {
     res.json({ ok: true, service: 'nepmatics-web' });
   });
 
-  // Publications archive endpoint (honest empty state until research outputs are released)
   app.get('/api/publications', (_req: Request, res: Response) => {
     const publications: PublicationEntry[] = [];
     res.json({ publications });
@@ -111,10 +110,10 @@ async function createApp() {
       return;
     }
 
-    const name = sanitizeText(body.name);
-    const email = sanitizeText(body.email);
-    const subject = sanitizeText(body.subject);
-    const message = sanitizeText(body.message);
+    const name = sanitizeSingleLine(body.name);
+    const email = sanitizeSingleLine(body.email);
+    const subject = sanitizeSingleLine(body.subject);
+    const message = sanitizeMultiline(body.message);
 
     const fieldErrors: Record<string, string> = {};
 
@@ -144,7 +143,7 @@ async function createApp() {
     const token = crypto.randomBytes(3).toString('hex').toUpperCase();
     const referenceId = `NM-${dateStamp}-${token}`;
 
-    const entry: ContactSubmission = {
+    const mailPayload = {
       id: referenceId,
       name,
       email,
@@ -153,15 +152,47 @@ async function createApp() {
       submittedAt: now.toISOString(),
     };
 
+    const mailResult = await dispatchContactEmail(mailPayload);
+
+    if (mailResult.provider !== 'none' && !mailResult.dispatched) {
+      res.status(502).json({
+        error:
+          mailResult.error ||
+          `Unable to deliver email to ${mailResult.recipientEmail} right now.`,
+      });
+      return;
+    }
+
+    const entry: ContactSubmission = {
+      ...mailPayload,
+      recipientEmail: mailResult.recipientEmail,
+      emailDispatched: mailResult.dispatched,
+    };
+
     try {
       await persistInquiry(entry);
       res.status(201).json({
         ok: true,
         referenceId: entry.id,
         submittedAt: entry.submittedAt,
-        message: 'Your inquiry has been recorded by NepMatics.',
+        recipientEmail: mailResult.recipientEmail,
+        emailDispatched: mailResult.dispatched,
+        message: mailResult.dispatched
+          ? `Your inquiry has been delivered directly to ${mailResult.recipientEmail}.`
+          : 'Your inquiry has been recorded on the server.',
       });
     } catch {
+      if (mailResult.dispatched) {
+        res.status(201).json({
+          ok: true,
+          referenceId: entry.id,
+          submittedAt: entry.submittedAt,
+          recipientEmail: mailResult.recipientEmail,
+          emailDispatched: true,
+          message: `Your inquiry has been delivered directly to ${mailResult.recipientEmail}.`,
+        });
+        return;
+      }
       res.status(500).json({
         error: 'Unable to record your inquiry right now. Please try again shortly.',
       });
