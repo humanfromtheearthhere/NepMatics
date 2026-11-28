@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { APPROACH_STAGES } from '../data/researchData';
-import type { ApproachVideoMap } from '../../lib/siteConfig';
+import { DEFAULT_SITE_CONFIG, type ApproachVideoMap } from '../../lib/siteConfig';
 import { isImageAssetUrl, useSiteConfig } from '../context/SiteConfigContext';
 
 export function ApproachSection() {
   const [activeStep, setActiveStep] = useState<string>(APPROACH_STAGES[0].step);
+  const [brokenStages, setBrokenStages] = useState<Record<string, boolean>>({});
   const { config } = useSiteConfig();
 
   const selectedStage =
@@ -30,7 +31,11 @@ export function ApproachSection() {
         <div className="relative mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {APPROACH_STAGES.map((stage) => {
             const isSelected = stage.step === activeStep;
-            const stageVideoUrl = config.approachVideos[stage.step as keyof ApproachVideoMap];
+            const key = stage.step as keyof ApproachVideoMap;
+            const configuredUrl = config.approachVideos[key];
+            const defaultUrl = DEFAULT_SITE_CONFIG.approachVideos[key];
+            const stageVideoUrl =
+              brokenStages[stage.step] && defaultUrl ? defaultUrl : configuredUrl;
 
             return (
               <button
@@ -52,6 +57,11 @@ export function ApproachSection() {
                       <img
                         src={stageVideoUrl}
                         alt={`${stage.title} illustration`}
+                        onError={() => {
+                          if (stageVideoUrl !== defaultUrl) {
+                            setBrokenStages((prev) => ({ ...prev, [stage.step]: true }));
+                          }
+                        }}
                         className="h-full w-full object-contain mix-blend-multiply"
                       />
                     ) : (
@@ -63,6 +73,11 @@ export function ApproachSection() {
                         muted
                         playsInline
                         preload="auto"
+                        onError={() => {
+                          if (stageVideoUrl !== defaultUrl) {
+                            setBrokenStages((prev) => ({ ...prev, [stage.step]: true }));
+                          }
+                        }}
                         className="h-full w-full object-contain mix-blend-multiply"
                       />
                     )

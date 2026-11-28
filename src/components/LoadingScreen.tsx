@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { DEFAULT_LOADING_VIDEO_URL } from '../../lib/siteConfig';
 import { isImageAssetUrl, useSiteConfig } from '../context/SiteConfigContext';
 
 export function LoadingScreen() {
   const { config, previewToken } = useSiteConfig();
   const [visible, setVisible] = useState(true);
   const [fadingOut, setFadingOut] = useState(false);
+  const [fallbackActive, setFallbackActive] = useState(false);
+  const durationRef = useRef(config.loadingDurationMs);
+  durationRef.current = config.loadingDurationMs;
+
+  useEffect(() => {
+    setFallbackActive(false);
+  }, [config.loadingVideoUrl]);
 
   // Show centered white loading screen on initial load / refresh / restart,
   // and whenever re-triggered via Temp Admin preview.
@@ -12,7 +20,7 @@ export function LoadingScreen() {
     setVisible(true);
     setFadingOut(false);
 
-    const minDelay = Math.max(900, config.loadingDurationMs || 1600);
+    const minDelay = Math.max(900, durationRef.current || 1600);
     const startTime = performance.now();
     let fadeTimer: number | undefined;
     let hideTimer: number | undefined;
@@ -36,7 +44,6 @@ export function LoadingScreen() {
       scheduleDismiss();
     } else {
       window.addEventListener('load', scheduleDismiss, { once: true });
-      // Fallback safeguard in case a third-party resource stalls
       const safetyTimer = window.setTimeout(scheduleDismiss, Math.max(minDelay + 1400, 3200));
       return () => {
         window.removeEventListener('load', scheduleDismiss);
@@ -50,9 +57,8 @@ export function LoadingScreen() {
       if (fadeTimer) window.clearTimeout(fadeTimer);
       if (hideTimer) window.clearTimeout(hideTimer);
     };
-  }, [previewToken, config.loadingDurationMs]);
+  }, [previewToken]);
 
-  // Immediately re-engage pure white loading screen when user refreshes/reloads
   useEffect(() => {
     const handleBeforeUnload = () => {
       setFadingOut(false);
@@ -64,7 +70,8 @@ export function LoadingScreen() {
 
   if (!visible) return null;
 
-  const isImage = isImageAssetUrl(config.loadingVideoUrl);
+  const mediaUrl = fallbackActive ? DEFAULT_LOADING_VIDEO_URL : config.loadingVideoUrl;
+  const isImage = isImageAssetUrl(mediaUrl);
 
   return (
     <div
@@ -78,19 +85,25 @@ export function LoadingScreen() {
       <div className="flex items-center justify-center">
         {isImage ? (
           <img
-            src={config.loadingVideoUrl}
+            src={mediaUrl}
             alt="Loading animation"
+            onError={() => {
+              if (mediaUrl !== DEFAULT_LOADING_VIDEO_URL) setFallbackActive(true);
+            }}
             className="h-36 w-36 object-contain sm:h-44 sm:w-44"
           />
         ) : (
           <video
-            key={config.loadingVideoUrl}
-            src={config.loadingVideoUrl}
+            key={mediaUrl}
+            src={mediaUrl}
             autoPlay
             loop
             muted
             playsInline
             preload="auto"
+            onError={() => {
+              if (mediaUrl !== DEFAULT_LOADING_VIDEO_URL) setFallbackActive(true);
+            }}
             className="h-36 w-36 object-contain mix-blend-multiply sm:h-44 sm:w-44"
           />
         )}
