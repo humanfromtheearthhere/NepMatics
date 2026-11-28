@@ -60,8 +60,8 @@ export function CustomCursor() {
       }
       setVisible(true);
 
-      const target = e.target as HTMLElement | null;
-      if (!target) {
+      const target = e.target as Element | null;
+      if (!target || typeof target.closest !== 'function') {
         setVariant('default');
         return;
       }
